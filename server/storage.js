@@ -4,10 +4,29 @@ import { fileURLToPath } from 'url'
 import { put, del, list } from '@vercel/blob'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.join(__dirname, 'data')
-const DATA_FILE = path.join(DATA_DIR, 'portfolio.json')
-const UPLOADS_DIR = path.join(__dirname, 'uploads')
 const PORTFOLIO_BLOB_PATH = 'portfolio.json'
+
+function isVercelRuntime() {
+  return process.env.VERCEL === '1'
+}
+
+export function getDataDir() {
+  if (isVercelRuntime()) {
+    return '/tmp/armaan-data'
+  }
+  return path.join(__dirname, 'data')
+}
+
+export function getUploadsDir() {
+  if (isVercelRuntime()) {
+    return '/tmp/armaan-uploads'
+  }
+  return path.join(__dirname, 'uploads')
+}
+
+function getDataFile() {
+  return path.join(getDataDir(), 'portfolio.json')
+}
 
 export const DEFAULT_PORTFOLIO = [
   {
@@ -77,11 +96,14 @@ export function usesBlobStorage() {
 }
 
 function ensureLocalDirs() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
+  const dataDir = getDataDir()
+  const uploadsDir = getUploadsDir()
+
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true })
   }
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true })
   }
 }
 
@@ -113,15 +135,16 @@ async function writePortfolioToBlob(items) {
 
 function readPortfolioFromDisk() {
   ensureLocalDirs()
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_PORTFOLIO, null, 2))
+  const dataFile = getDataFile()
+  if (!fs.existsSync(dataFile)) {
+    fs.writeFileSync(dataFile, JSON.stringify(DEFAULT_PORTFOLIO, null, 2))
   }
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'))
+  return JSON.parse(fs.readFileSync(dataFile, 'utf-8'))
 }
 
 function writePortfolioToDisk(items) {
   ensureLocalDirs()
-  fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2))
+  fs.writeFileSync(getDataFile(), JSON.stringify(items, null, 2))
 }
 
 export async function readPortfolio() {
@@ -149,7 +172,7 @@ export async function uploadMedia(file) {
   }
 
   ensureLocalDirs()
-  const filePath = path.join(UPLOADS_DIR, file.filename)
+  const filePath = path.join(getUploadsDir(), file.filename)
   fs.writeFileSync(filePath, file.buffer)
   return { mediaUrl: `/uploads/${file.filename}`, filename: file.filename }
 }
@@ -164,7 +187,7 @@ export async function deleteMedia(item) {
     return
   }
 
-  const filePath = path.join(UPLOADS_DIR, item.filename)
+  const filePath = path.join(getUploadsDir(), item.filename)
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath)
   }

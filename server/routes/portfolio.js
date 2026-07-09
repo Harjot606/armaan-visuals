@@ -1,19 +1,15 @@
 import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import { requireAuth } from '../auth.js'
 import { addItem, getAllItems, removeItem, resetToSamples, uploadMedia } from '../db.js'
-import { usesBlobStorage } from '../storage.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads')
+import { getUploadsDir, usesBlobStorage } from '../storage.js'
 
 const storage = usesBlobStorage()
   ? multer.memoryStorage()
   : multer.diskStorage({
-      destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+      destination: (_req, _file, cb) => cb(null, getUploadsDir()),
       filename: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase()
         cb(null, `${randomUUID()}${ext}`)
