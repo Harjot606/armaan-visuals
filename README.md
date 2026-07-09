@@ -50,6 +50,17 @@ Uploaded files are saved in `server/uploads/`. Metadata is stored in `server/dat
 
 ## Production
 
+### Vercel (live site)
+
+See `DEPLOY.md` for full steps. After deploy:
+
+- **Sign in:** `https://armaan-visuals.vercel.app/admin/login`
+- **Dashboard:** `https://armaan-visuals.vercel.app/admin`
+
+Connect **Vercel Blob** storage in the Vercel dashboard so uploads persist.
+
+### Self-hosted / Render
+
 ```bash
 npm run build
 npm run start
