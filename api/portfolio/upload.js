@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Authentication required.' })
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
     return res.status(503).json({
       error: 'Blob storage is not configured. Connect Vercel Blob and redeploy.',
     })
