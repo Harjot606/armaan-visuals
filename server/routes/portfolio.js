@@ -31,6 +31,64 @@ const upload = multer({
 
 const router = Router()
 
+async function createPortfolioItem(req, res) {
+  const { title, category, description, mediaUrl, filename, mediaType: bodyMediaType } = req.body
+
+  if (!title?.trim() || !category) {
+    return res.status(400).json({ error: 'Title and category are required.' })
+  }
+
+  // Metadata-only create after a client-side Blob upload
+  if (mediaUrl && filename) {
+    const item = await addItem({
+      id: randomUUID(),
+      title: title.trim(),
+      category,
+      description: description?.trim() || '',
+      mediaType: bodyMediaType || 'image',
+      mediaUrl,
+      filename,
+      createdAt: new Date().toISOString(),
+    })
+    return res.status(201).json(item)
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Image or video file is required.' })
+  }
+
+  const mediaType = req.file.mimetype.startsWith('video/') ? 'video' : 'image'
+  let savedMediaUrl
+  let savedFilename
+
+  if (usesBlobStorage()) {
+    const blobFilename = `uploads/${randomUUID()}${path.extname(req.file.originalname).toLowerCase()}`
+    const uploaded = await uploadMedia({
+      filename: blobFilename,
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+    })
+    savedMediaUrl = uploaded.mediaUrl
+    savedFilename = uploaded.filename
+  } else {
+    savedMediaUrl = `/uploads/${req.file.filename}`
+    savedFilename = req.file.filename
+  }
+
+  const item = await addItem({
+    id: randomUUID(),
+    title: title.trim(),
+    category,
+    description: description?.trim() || '',
+    mediaType,
+    mediaUrl: savedMediaUrl,
+    filename: savedFilename,
+    createdAt: new Date().toISOString(),
+  })
+
+  res.status(201).json(item)
+}
+
 router.get('/', async (_req, res) => {
   try {
     res.json(await getAllItems())
@@ -39,51 +97,20 @@ router.get('/', async (_req, res) => {
   }
 })
 
-router.post('/', requireAuth, upload.single('media'), async (req, res) => {
-  try {
-    const { title, category, description } = req.body
-
-    if (!title?.trim() || !category) {
-      return res.status(400).json({ error: 'Title and category are required.' })
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ error: 'Image or video file is required.' })
-    }
-
-    const mediaType = req.file.mimetype.startsWith('video/') ? 'video' : 'image'
-    let mediaUrl
-    let filename
-
-    if (usesBlobStorage()) {
-      const blobFilename = `uploads/${randomUUID()}${path.extname(req.file.originalname).toLowerCase()}`
-      const uploaded = await uploadMedia({
-        filename: blobFilename,
-        buffer: req.file.buffer,
-        mimetype: req.file.mimetype,
-      })
-      mediaUrl = uploaded.mediaUrl
-      filename = uploaded.filename
-    } else {
-      mediaUrl = `/uploads/${req.file.filename}`
-      filename = req.file.filename
-    }
-
-    const item = await addItem({
-      id: randomUUID(),
-      title: title.trim(),
-      category,
-      description: description?.trim() || '',
-      mediaType,
-      mediaUrl,
-      filename,
-      createdAt: new Date().toISOString(),
+router.post('/', requireAuth, (req, res, next) => {
+  const contentType = req.headers['content-type'] || ''
+  if (contentType.includes('application/json')) {
+    return createPortfolioItem(req, res).catch((err) => {
+      res.status(500).json({ error: err.message || 'Upload failed.' })
     })
-
-    res.status(201).json(item)
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'Upload failed.' })
   }
+
+  upload.single('media')(req, res, (err) => {
+    if (err) return next(err)
+    createPortfolioItem(req, res).catch((error) => {
+      res.status(500).json({ error: error.message || 'Upload failed.' })
+    })
+  })
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {

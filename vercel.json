@@ -1,7 +1,16 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60
+    },
+    "api/portfolio/upload.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
+    { "source": "/api/portfolio/upload", "destination": "/api/portfolio/upload" },
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/uploads/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }

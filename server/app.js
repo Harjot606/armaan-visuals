@@ -19,7 +19,10 @@ app.use('/api/auth', authRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' })
+  res.json({
+    status: 'ok',
+    storage: usesBlobStorage() ? 'blob' : process.env.VERCEL === '1' ? 'tmp' : 'local',
+  })
 })
 
 export default app
